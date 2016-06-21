@@ -21,6 +21,9 @@ class SpaceColonizerApp : public App {
 	SpaceColonizer sc;
 	SCData scData;
 	int lastBudCount = 0;
+	bool completed = false;
+	int completeCount = 0;
+	float phase = 0.0f;
 
 	gl::GlslProgRef defaultShader;
 	CameraPersp		mCamera;
@@ -43,12 +46,15 @@ void SpaceColonizerApp::mouseDown(MouseEvent event) {
 
 void SpaceColonizerApp::reset(){
 
+	completeCount = 0;
+	completed = false;
+
 	sc.options.budPositions.resize(1);
-	sc.options.budPositions[0] = Rand::randVec3();
+	sc.options.budPositions[0] = Rand::randVec3();// *vec3(1, 1, 0);
 
 	sc.options.hormonePositions.resize(1000);
 	for (size_t i = 0; i < 1000; i++) {
-		sc.options.hormonePositions[i] = Rand::randVec3();
+		sc.options.hormonePositions[i] = Rand::randVec3();// *vec3(1, 1, 0);
 	}
 
 	lastBudCount = 0;
@@ -56,9 +62,21 @@ void SpaceColonizerApp::reset(){
 }
 
 
-float phase = 0.0f;
 void SpaceColonizerApp::update() {
-	scData = sc.iterate();
+	
+	if(!completed) scData = sc.iterate();
+
+	// still growing?
+	size_t n = scData.buds.size();
+	if (n > 0 && n == lastBudCount) {
+		completed = true;
+		completeCount++;
+		if (completeCount > 240) {
+			reset();
+		}
+	}
+	lastBudCount = n;
+
 
 	vec3 p = vec3(sinf(phase), 0.0f, cosf(phase)) * 200.0f;
 	mCamera.lookAt(p, vec3());
@@ -79,21 +97,13 @@ void SpaceColonizerApp::draw(){
 	gl::color(1.0f, 1.0f, 1.0f, 1.0f);
 
 	size_t n = scData.buds.size();
-
-	// still growing?
-	if (n != lastBudCount) {
-		for (size_t i = 0; i < n; i++) {
-			Bud b = scData.buds[i];
-			if (scData.buds[i].hasParent) {
-				gl::drawLine(scData.buds[i].parentPos*100.0f, scData.buds[i].position*100.0f);
-			}
+	for (size_t i = 0; i < n; i++) {
+		Bud b = scData.buds[i];
+		if (scData.buds[i].hasParent) {
+			gl::drawLine(scData.buds[i].parentPos*100.0f, scData.buds[i].position*100.0f);
 		}
 	}
-	else {
-		reset();
-	}
 
-	lastBudCount = n;
 }
 
 CINDER_APP(SpaceColonizerApp, RendererGl(RendererGl::Options().msaa(8)), [](App::Settings *settings) {
