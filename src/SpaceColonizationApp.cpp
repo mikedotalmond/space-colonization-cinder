@@ -19,7 +19,7 @@ class SpaceColonizerApp : public App {
 	void reset();
 
 	SpaceColonizer sc;
-	SCData scData;
+	vector<Bud> data;
 	int lastBudCount = 0;
 	bool completed = false;
 	int completeCount = 0;
@@ -49,13 +49,15 @@ void SpaceColonizerApp::reset(){
 	completeCount = 0;
 	completed = false;
 
+	///*
 	sc.options.budPositions.resize(1);
 	sc.options.budPositions[0] = Rand::randVec3();// *vec3(1, 1, 0);
 
 	sc.options.hormonePositions.resize(1000);
-	for (size_t i = 0; i < 1000; i++) {
-		sc.options.hormonePositions[i] = Rand::randVec3();// *vec3(1, 1, 0);
+	for (int i = 0; i < 1000; i++) {
+		sc.options.hormonePositions[i] = Rand::randVec3()*(.75f + Rand::randFloat()*.25f);// *vec3(1, 1, 0);
 	}
+	//*/
 
 	lastBudCount = 0;
 	sc.reset();
@@ -64,10 +66,10 @@ void SpaceColonizerApp::reset(){
 
 void SpaceColonizerApp::update() {
 	
-	if(!completed) scData = sc.iterate();
+	if(!sc.isComplete()) data = sc.iterate();
 
 	// still growing?
-	size_t n = scData.buds.size();
+	int n = data.size();
 	if (n > 0 && n == lastBudCount) {
 		completed = true;
 		completeCount++;
@@ -96,15 +98,14 @@ void SpaceColonizerApp::draw(){
 	gl::lineWidth(1.0f); 
 	gl::color(1.0f, 1.0f, 1.0f, 1.0f);
 
-	size_t n = scData.buds.size();
-	for (size_t i = 0; i < n; i++) {
-		Bud b = scData.buds[i];
-		if (scData.buds[i].hasParent) {
-			gl::drawLine(scData.buds[i].parentPos*100.0f, scData.buds[i].position*100.0f);
+	size_t n = data.size();
+	for (int i = 0; i < n; i++) {
+		if (data[i].hasParent) {
+			gl::drawLine(data[data[i].parentIndex].position*100.0f, data[i].position*100.0f);
 		}
 	}
-
 }
+
 
 CINDER_APP(SpaceColonizerApp, RendererGl(RendererGl::Options().msaa(8)), [](App::Settings *settings) {
 	settings->setMultiTouchEnabled(false);

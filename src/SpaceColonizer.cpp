@@ -5,15 +5,15 @@
 
 static const SCOptions DefaultOptions = {
 	_3D, // type
-	.1f, //deadzone
-	.02f, //growthStep
-	.2f, //splitChance
-	1000, //numHormones
-	1, //startBuds
-	1.0f, //centerRadius
+	.1f, // deadzone
+	.02f, // growthStep
+	.2f, // splitChance
+	1000, // numHormones
+	1, // startBuds
+	1.0f, // centerRadius
 	0.873f, // viewAngle // 50
 	0.524f, // branchAngle // 30
-	.2f, //viewDistance,
+	.2f, // viewDistance,
 	SPLIT, // growType
 };
 
@@ -40,12 +40,12 @@ void SpaceColonizer::setup(SCOptions o) {
 }
 
 
-SCData SpaceColonizer::iterate(){ 
+vector<Bud> SpaceColonizer::iterate(){ 
 
 	findAttractors();
 
-	const size_t n = buds.size();
-	for (size_t i = 0; i < n; i++) {
+	int n = buds.size();
+	for (int i = 0; i < n; i++) {
 
 		if (buds[i].state == 1) continue;
 
@@ -55,25 +55,34 @@ SCData SpaceColonizer::iterate(){
 			continue;
 		}
 
-		vec3 budPos = vec3(buds[i].position);
 		calculateAverageVec(i);
 
-		bool didSplit = splitBranch(budPos);
-		vec3 nextDir = nextDirection(budPos, didSplit);
-		vec3 nextPos = budPos + nextDir;
-		
-		buds[i].state++;
-		buds.push_back({0, nextPos, false, true, buds[i].position, true, nextDir });
+		bool didSplit = splitBranch(i);
+		vec3 nextDir = nextDirection(buds[i].position, didSplit);
+		vec3 nextPos = buds[i].position + nextDir;
 
-		const size_t hSize = hormonesForBud[i].size();
-		vector<Hormone> budHormones = vector<Hormone>(hSize);
-		for (size_t j = 0; j < hSize; j++) {
-			budHormones[j] = hormones[hormonesForBud[i][j]];
-		}
-		buds[i].hormones = budHormones;
+		buds[i].state++;
+
+		addBud(Bud({ 0, nextPos, false, true, i, false, true, nextDir }));
+
+		//const size_t hSize = hormonesForBud[i].size();
+		//vector<Hormone> budHormones = vector<Hormone>(hSize);
+		//for (size_t j = 0; j < hSize; j++) {
+		//	budHormones[j] = hormones[hormonesForBud[i][j]];
+		//}
+		//bud.hormones = budHormones;
 	}
 
-	return { buds, hormones };
+	int budCount = buds.size();
+	if (budCount == lastBudCount) completed = true;
+	lastBudCount = budCount;
+
+	return buds;
+}
+
+
+void SpaceColonizer::addBud(Bud &bud) {
+	buds.push_back(bud);
 }
 
 
@@ -84,8 +93,15 @@ void SpaceColonizer::reset(SCOptions options) {
 
 
 void SpaceColonizer::reset() {
+	completed = false;
+	lastBudCount = 0;
 	generateHormones();
 	generateBuds();
+}
+
+bool SpaceColonizer::isComplete()
+{
+	return completed;
 }
 
 
@@ -119,20 +135,17 @@ void SpaceColonizer::generateBuds() {
 	bool haveBuds = options.budPositions.size() > 0;	
 	size_t length = haveBuds ? options.budPositions.size()  : options.startBuds;
 
-	vec3 pos;
-
 	if (haveBuds) {
 		vector<vec3> positions = options.budPositions;
 		for (size_t i = 0; i < length; i++) {
-			pos = positions[i];
-			buds.push_back({ 0, vec3(pos) });
+			addBud(Bud({ 0, positions[i]}));
 		}
 	}
 	else {
 		for (size_t i = 0; i < length; i++) {
-			pos = randomVec3() * options.centerRadius;
+			vec3 pos = randomVec3() * options.centerRadius;
 			if (options.type == _2D) pos.z = 0.0f;
-			buds.push_back({ 0, pos });
+			addBud(Bud({ 0, pos }));
 		}
 	}
 }
@@ -205,7 +218,7 @@ void SpaceColonizer::calculateAverageVec(int index) {
 
 
 
-vec3 SpaceColonizer::nextDirection(vec3 budPos, bool rotate) {
+vec3 SpaceColonizer::nextDirection(vec3 &budPos, bool rotate) {
 
 	vec3 dir = avgVec - budPos;
 	dir = normalize(dir) * options.growthStep;
@@ -223,7 +236,7 @@ vec3 SpaceColonizer::nextDirection(vec3 budPos, bool rotate) {
 
 
 
-vec3 SpaceColonizer::nextDirectionForBranch(vec3 budPos) {
+vec3 SpaceColonizer::nextDirectionForBranch(vec3 &budPos) {
 
 	float a = -options.branchAngle;
 	float sin = sinf(a);
@@ -240,12 +253,11 @@ vec3 SpaceColonizer::nextDirectionForBranch(vec3 budPos) {
 
 
 
-bool SpaceColonizer::splitBranch(vec3 parentPos) {
-
+bool SpaceColonizer::splitBranch(int parentIndex) {
 	if (Rand::randFloat() > (1.0 - options.splitChance)) {
-		vec3 branchNextDir = nextDirectionForBranch(parentPos);
-		vec3 branchNextPos = parentPos + branchNextDir;
-		buds.push_back({ 0, branchNextPos, true, true, parentPos, true, branchNextDir });
+		vec3 branchNextDir = nextDirectionForBranch(buds[parentIndex].position);
+		vec3 branchNextPos = buds[parentIndex].position  + branchNextDir;
+		addBud(Bud({ 0, branchNextPos, true, true, parentIndex, true, true, branchNextDir }));
 		return true;
 	}
 

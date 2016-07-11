@@ -23,7 +23,8 @@ struct Bud {
 	vec3 position;
 	bool split;
 	bool hasParent;
-	vec3 parentPos;
+	int parentIndex;
+	bool branched;
 	bool hasDirection;
 	vec3 direction;
 	vector<Hormone> hormones;
@@ -61,15 +62,18 @@ class SpaceColonizer {
 		SpaceColonizer();
 		~SpaceColonizer();
 
-		SCData iterate();
-	
+		vector<Bud> iterate();
+
 		void reset(SCOptions options);
 		void reset();
+		bool isComplete();
 
 		static vec3 randomVec3();
 
 	private:
 
+		bool completed;
+		int lastBudCount;
 		vec3 avgVec;
 		vector<Bud> buds;
 		vector<Hormone> hormones;
@@ -79,12 +83,14 @@ class SpaceColonizer {
 		void generateHormones();
 		void generateBuds();
 		void findAttractors();
+		void addBud(Bud & bud);
+
+
 
 		void calculateAverageVec(int index);
 
-		vec3 nextDirection(vec3 budPos, bool rotate);
+		vec3 nextDirection(vec3 & budPos, bool rotate);
+		vec3 nextDirectionForBranch(vec3 & budPos);
 
-		vec3 nextDirectionForBranch(vec3 budPos);
-
-		bool splitBranch(vec3 parentPos);
+		bool splitBranch(int parentIndex);
 };
